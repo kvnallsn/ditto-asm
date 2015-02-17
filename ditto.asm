@@ -10,13 +10,47 @@
 main:							# Entry point	
 		la 	$a0, buf
 		li 	$a1, 640
-		li 	$a2, 80
+		li 	$a2, 60
 		jal	hexdump
 
 exit:
 		li 	$v0, 10				# Exit Syscall
 		syscall	
 
+###
+## Print Hex Function
+###
+printhex:
+		# prologue
+		sub  $sp, $sp, 12
+		sw 	 $a0, 0($sp)
+		sw 	 $ra, 4($sp)
+		sw	 $fp, 8($sp)
+		move $fp, $sp
+
+		li	 $v0, 11
+		sub  $t2, $a0, 10
+		bgez $t2, printhex_char
+		add  $a0, $a0, 48			 	# Add 48 to get printable int	
+		b	 printhex_done
+
+printhex_char:
+		add  $a0, $a0, 55
+
+printhex_done:
+		syscall
+
+		# epilogue
+		move $sp, $fp
+		lw	 $a0, 0($sp)
+		lw	 $ra, 4($sp)
+		lw	 $fp, 8($sp)
+
+		jr	 $ra
+
+###
+## Hex dump function
+###
 hexdump:
 		# prologue
 		sub  $sp, $sp, 20
@@ -51,21 +85,38 @@ loop_char:
 		la 	 $a0, endl
 		syscall
 	
-#		lw	 $t0, 0($fp)
-#		li 	 $t1, 0
-#loop_upper:
-#		li	 $v0, 1
-#		lb 	 $a0, ($t0) 
-#		syscall
+		lw	 $t0, 0($fp)
+		li 	 $t1, 0
+loop_lower:
+		lb	 $a0, ($t0)
+		srl	 $a0, $a0, 4
+		and	 $a0, $a0, 0xF
+		jal printhex
 
-#		add  $t1, $t1, 1
-#		add  $t0, $t0, 1
-#		bne  $t1, $a2 loop_upper
+		add  $t1, $t1, 1
+		add  $t0, $t0, 1
+		bne  $t1, $t9, loop_lower
 
 		# Print newline (\n, 0x0A)
-#		li 	 $v0, 4
-#		la 	 $a0, endl
-#		syscall
+		li 	 $v0, 4
+		la 	 $a0, endl
+		syscall
+
+		lw	 $t0, 0($fp)
+		li 	 $t1, 0
+loop_upper:
+		lb 	 $a0, ($t0)
+		and  $a0, $a0, 0xF
+		jal printhex
+
+		add  $t1, $t1, 1
+		add  $t0, $t0, 1
+		bne  $t1, $t9, loop_upper
+
+		# Print newline (\n, 0x0A)
+		li 	 $v0, 4
+		la 	 $a0, endl
+		syscall
 
 		li 	 $t1, 0
 		li	 $t2, 0
